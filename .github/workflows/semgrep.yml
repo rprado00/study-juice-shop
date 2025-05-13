@@ -20,7 +20,8 @@ jobs:
 
       - name: Install Semgrep
         run: |
-          curl -sL https://semgrep.dev/install.sh | bash
+          python3 -m pip install --upgrade pip
+          pip install semgrep
 
       - name: Run Semgrep and save report
         run: |
