@@ -1,0 +1,45 @@
+name: Semgrep OWASP Analysis for OWASP Juice Shop
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  semgrep:
+    name: Semgrep OWASP Top 10 Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'  
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: 'node_modules'
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps 
+
+      - name: Install Semgrep
+        run: npm install -g semgrep@1.62.1 
+
+      - name: Run Semgrep with OWASP Top 10 ruleset
+        run: |
+          semgrep --config "p/owasp-top-ten" --json --output semgrep-results.json --no-error
+
+      - name: Upload Semgrep results
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: semgrep-results.json
