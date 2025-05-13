@@ -1,4 +1,4 @@
-name: Semgrep
+name: Semgrep PR
 
 on:
   push:
@@ -9,45 +9,44 @@ on:
 jobs:
   semgrep:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Git identity
+        run: |
+          git config --global user.email "semgrep-bot@github.com"
+          git config --global user.name "semgrep-bot"
 
       - name: Install Semgrep
         run: |
           python3 -m pip install --upgrade pip
           pip install semgrep
-
-      - name: Run Semgrep (OWASP Top 10 only on arquivos específicos)
+          
+      - name: Run Semgrep and save report
         run: |
-          ./semgrep --config "p/owasp-top-ten" \
-          server.ts \
-          frontend/src/app/app.routing.ts \
-          frontend/src/app/search-result/search-result.component.ts \
-          lib/insecurity.ts \
-          models/user.ts \
-          routes/login.ts \
-          routes/search.ts \
-          routes/updateProductReviews.ts \
-          --json > semgrep-report.json
+          mkdir semgrep-output
+          semgrep --config "p/owasp-top-ten" \
+            server.ts \
+            frontend/src/app/app.routing.ts \
+            frontend/src/app/search-result/search-result.component.ts \
+            lib/insecurity.ts \
+            models/user.ts \
+            routes/login.ts \
+            routes/search.ts \
+            routes/updateProductReviews.ts \
+            --json > semgrep-output/semgrep-report.json
 
-      - name: Upload Semgrep Report
-        uses: actions/upload-artifact@v4
+      - name: Create Pull Request with report
+        uses: peter-evans/create-pull-request@v5
         with:
-          name: semgrep-report
-          path: semgrep-report.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Add Semgrep security report"
+          branch: semgrep/report
+          title: "📄 Semgrep Security Report"
+          body: |
+            Este PR inclui o relatório de segurança gerado pelo Semgrep com foco no OWASP Top 10.
+            Por favor, revise os resultados e considere ações de mitigação.
 
-      - name: Create Issue if Findings Exist
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          findings=$(jq '.results | length' semgrep-report.json)
-          if [ "$findings" -gt 0 ]; then
-            body=$(jq -r '.results[] | "- **[Severity: \(.extra.severity)]** \(.check_id) in `\(.path):\(.start.line)`\n  - \(.extra.message)"' semgrep-report.json | head -n 20)
-            curl -s -X POST \
-              -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              https://api.github.com/repos/${{ github.repository }}/issues \
-              -d "$(jq -n --arg title '🔎 Semgrep Findings - OWASP Top 10' --arg body "$body" '{title: $title, body: $body}')"
-          else
-            echo "✅ Nenhum problema encontrado pelo Semgrep."
-          fi
+          add-paths: |
+            semgrep-output/semgrep-report.json
