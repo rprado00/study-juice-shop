@@ -20,9 +20,8 @@ jobs:
 
       - name: Install Semgrep
         run: |
-          python3 -m pip install --upgrade pip
-          pip install semgrep
-          
+          curl -sL https://semgrep.dev/install.sh | bash
+
       - name: Run Semgrep and save report
         run: |
           mkdir semgrep-output
@@ -37,6 +36,12 @@ jobs:
             routes/updateProductReviews.ts \
             --json > semgrep-output/semgrep-report.json
 
+      - name: Convert JSON to Markdown
+        run: |
+          echo "# 🛡️ Semgrep OWASP Top 10 Report" > semgrep-output/semgrep-report.md
+          echo "" >> semgrep-output/semgrep-report.md
+          jq -r '.results[] | "- **File:** \(.path)\n  - **Line:** \(.start.line)\n  - **Rule:** \(.check_id)\n  - **Message:** \(.extra.message)\n"' semgrep-output/semgrep-report.json >> semgrep-output/semgrep-report.md
+
       - name: Create Pull Request with report
         uses: peter-evans/create-pull-request@v5
         with:
@@ -46,7 +51,11 @@ jobs:
           title: "📄 Semgrep Security Report"
           body: |
             Este PR inclui o relatório de segurança gerado pelo Semgrep com foco no OWASP Top 10.
-            Por favor, revise os resultados e considere ações de mitigação.
+
+            Arquivos incluídos:
+            - `semgrep-report.json`
+            - `semgrep-report.md`
 
           add-paths: |
             semgrep-output/semgrep-report.json
+            semgrep-output/semgrep-report.md
