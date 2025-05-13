@@ -21,7 +21,6 @@ jobs:
         with:
           args: >
             -Dsonar.inclusions=server.ts,frontend/src/app/app.routing.ts,frontend/src/app/search-result.component.ts,lib/insecurity.ts,models/user.ts,routes/login.ts,routes/search.ts,routes/updateProductReviews.ts
-            -Dsonar.exclusions=**/*
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
