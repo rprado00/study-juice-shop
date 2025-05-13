@@ -8,38 +8,45 @@ on:
 
 jobs:
   semgrep:
-    name: Semgrep OWASP Top 10 Scan
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'  # Use uma versão LTS do Node.js
-
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: 'node_modules'
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps # Adicionado o parâmetro legacy-peer-deps
+      - uses: actions/checkout@v4
 
       - name: Install Semgrep
-        run: npm install -g semgrep # Instala a versão mais recente do Semgrep
-
-      - name: Run Semgrep with OWASP Top 10 ruleset
         run: |
-          semgrep --config "p/owasp-top-ten" --json --output semgrep-results.json --no-error
+          curl -sL https://semgrep.dev/install.sh | sh
 
-      - name: Upload Semgrep results
+      - name: Run Semgrep (OWASP Top 10 only on arquivos específicos)
+        run: |
+          ./semgrep --config "p/owasp-top-ten" \
+          server.ts \
+          frontend/src/app/app.routing.ts \
+          frontend/src/app/search-result/search-result.component.ts \
+          lib/insecurity.ts \
+          models/user.ts \
+          routes/login.ts \
+          routes/search.ts \
+          routes/updateProductReviews.ts \
+          --json > semgrep-report.json
+
+      - name: Upload Semgrep Report
         uses: actions/upload-artifact@v4
         with:
-          name: semgrep-results
-          path: semgrep-results.json
+          name: semgrep-report
+          path: semgrep-report.json
+
+      - name: Create Issue if Findings Exist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          findings=$(jq '.results | length' semgrep-report.json)
+          if [ "$findings" -gt 0 ]; then
+            body=$(jq -r '.results[] | "- **[Severity: \(.extra.severity)]** \(.check_id) in `\(.path):\(.start.line)`\n  - \(.extra.message)"' semgrep-report.json | head -n 20)
+            curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${{ github.repository }}/issues \
+              -d "$(jq -n --arg title '🔎 Semgrep Findings - OWASP Top 10' --arg body "$body" '{title: $title, body: $body}')"
+          else
+            echo "✅ Nenhum problema encontrado pelo Semgrep."
+          fi
