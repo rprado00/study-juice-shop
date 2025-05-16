@@ -37,7 +37,7 @@ jobs:
             data/static/codefixes/tokenSaleChallenge_3_correct.ts \
             data/static/codefixes/accessLogDisclosureChallenge_1_correct.ts \
             data/static/codefixes/adminSectionChallenge_1_correct.ts \
-            data/static/codefixes/dbSchemaChallenge_2_correct.ts
+            data/static/codefixes/dbSchemaChallenge_2_correct.ts \
             --json > semgrep-output/semgrep-report.json
 
       - name: Convert JSON to Markdown
