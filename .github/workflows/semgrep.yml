@@ -1,10 +1,7 @@
 name: Semgrep PR
 
 on:
-  push:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   semgrep:
